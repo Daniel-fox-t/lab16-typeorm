@@ -1,0 +1,30 @@
+
+docker compose up -d --build
+
+# 1. РЕГИСТРАЦИЯ (ЛР 17: bcrypt + сохранение в БД)
+try {
+    $regResp = Invoke-WebRequest http://localhost:3000/auth/register -Method POST -ContentType "application/json" -Body '{"username":"demo_student","email":"demo@psu.by","password":"secret123"}'
+    Write-Host $regResp.Content
+} catch { 
+    Write-Host "Ошибка (возможно, пользователь уже создан): $($_.ErrorDetails.Message)" -ForegroundColor Red 
+}
+
+# 2. ЛОГИН (ЛР 17: LocalStrategy + JWT)
+
+Write-Host "Получен токен: $($token.Substring(0, 30))..." -ForegroundColor Green
+
+# 3. ДОСТУП БЕЗ ТОКЕНА (ЛР 17: JwtAuthGuard -> 401)
+try { 
+    Invoke-WebRequest http://localhost:3000/tasks 
+} catch { 
+    Write-Host "Статус: $($_.Exception.Response.StatusCode.value__) (Успех! Доступ закрыт)" -ForegroundColor Red 
+    Write-Host $_.ErrorDetails.Message 
+}
+
+# 4. ДОСТУП С ТОКЕНОМ (ЛР 17: JwtAuthGuard + RolesGuard -> 200)
+$headers = @{ "Authorization" = "Bearer $token" }
+(Invoke-WebRequest http://localhost:3000/tasks -Headers $headers).Content
+
+# 5. СОЗДАНИЕ ЗАДАЧИ (ЛР 16: CRUD)
+(Invoke-WebRequest http://localhost:3000/tasks -Method POST -ContentType "application/json" -Body '{"title":"Docker Compose Task","userId":1}').Content
+
